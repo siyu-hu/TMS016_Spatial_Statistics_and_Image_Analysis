@@ -17,12 +17,12 @@ def main():
     finger_dict = load_images_by_finger(output_folder)
 
     train_pairs, train_labels = create_pairs(finger_dict, train_fingers)
-    save_pairs(train_pairs, train_labels, "./project3_fingerprint_fvc2000/train_pairs")
+    save_pairs(train_pairs, train_labels, "./project3_fingerprint_fvc2000/data/train_pairs")
 
     val_pairs, val_labels = create_pairs(finger_dict, val_fingers)
-    save_pairs(val_pairs, val_labels, "./project3_fingerprint_fvc2000/val_pairs")
+    save_pairs(val_pairs, val_labels, "./project3_fingerprint_fvc2000/data/val_pairs")
 
-    data = np.load("./project3_fingerprint_fvc2000/train_pairs.npz", allow_pickle=True)
+    data = np.load("./project3_fingerprint_fvc2000/data/train_pairs.npz", allow_pickle=True)
     pairs = data["pairs"]
     labels = data["labels"]
 
