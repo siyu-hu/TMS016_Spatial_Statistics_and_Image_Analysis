@@ -2,3 +2,4 @@
 *.zip
 *.pdf
 __pycache__
+*.pt
