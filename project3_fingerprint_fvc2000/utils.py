@@ -4,6 +4,10 @@ from torch.utils.data import Dataset
 import torch.nn as nn
 import matplotlib.pyplot as plt
 import os
+import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, auc
+import torch.nn.functional as F
+from tqdm import tqdm
 
 class SiameseDataset(Dataset):
     def __init__(self, npz_file):
@@ -61,3 +65,128 @@ def save_checkpoint(model, path="checkpoints/best_model.pt"):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     torch.save(model.state_dict(), path)
     print(f"Model saved to {path}")
+
+
+
+
+def plot_distance_distribution(model, dataloader, device="cpu", save_path=None):
+    import torch.nn.functional as F
+    model.eval()
+
+    pos_distances = []
+    neg_distances = []
+
+    with torch.no_grad():
+        for img1, img2, label in dataloader:
+            img1, img2, label = img1.to(device), img2.to(device), label.to(device)
+            out1, out2 = model(img1, img2)
+            dist = F.pairwise_distance(out1, out2)
+
+            for d, l in zip(dist, label):
+                if l == 1:
+                    pos_distances.append(d.item())
+                else:
+                    neg_distances.append(d.item())
+
+
+    plt.figure(figsize=(8,5))
+    plt.hist(pos_distances, bins=50, alpha=0.6, label="Positive (same finger)")
+    plt.hist(neg_distances, bins=50, alpha=0.6, label="Negative (different finger)")
+    plt.xlabel("Distance")
+    plt.ylabel("Count")
+    plt.title("Distance Distribution")
+    plt.legend()
+    if save_path:
+        plt.savefig(save_path)
+        print(f" Distance histogram saved to {save_path}")
+    else:
+        plt.show()
+
+
+
+
+def plot_roc_curve(model, dataloader, device="cpu", save_path=None):
+    import torch.nn.functional as F
+    model.eval()
+
+    all_distances = []
+    all_labels = []
+
+    with torch.no_grad():
+        for img1, img2, label in dataloader:
+            img1, img2, label = img1.to(device), img2.to(device), label.to(device)
+            out1, out2 = model(img1, img2)
+            dist = F.pairwise_distance(out1, out2)
+
+            all_distances.extend(dist.cpu().numpy())
+            all_labels.extend(label.cpu().numpy())
+
+
+    # score = -distance
+    fpr, tpr, thresholds = roc_curve(all_labels, -1 * np.array(all_distances)) 
+    roc_auc = auc(fpr, tpr)
+
+    plt.figure(figsize=(6,6))
+    plt.plot(fpr, tpr, label=f"ROC curve (AUC = {roc_auc:.2f})")
+    plt.plot([0, 1], [0, 1], linestyle='--', color='gray')
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title("ROC Curve")
+    plt.legend(loc="lower right")
+
+    if save_path:
+        plt.savefig(save_path)
+        print(f" ROC curve saved to {save_path}")
+    else:
+        plt.show()
+
+import matplotlib.pyplot as plt
+import torch
+import torch.nn.functional as F
+import numpy as np
+from tqdm import tqdm
+
+def plot_accuracy_vs_threshold(model, dataloader, device="cpu", save_path=None):
+    model.eval()
+    thresholds = np.linspace(0.01, 0.15, 10)  
+    accuracies = []
+
+    all_distances = []
+    all_labels = []
+
+    print(" Extracting embeddings...")
+    with torch.no_grad():
+        for img1, img2, label in tqdm(dataloader, desc="Forward pass"):
+            img1, img2 = img1.to(device), img2.to(device)
+            out1, out2 = model(img1, img2)
+            dist = F.pairwise_distance(out1, out2)
+            all_distances.extend(dist.cpu().numpy())
+            all_labels.extend(label.numpy())
+
+    all_distances = np.array(all_distances)
+    all_labels = np.array(all_labels)
+
+    print("Calculating accuracy for thresholds...")
+    for t in tqdm(thresholds, desc="Threshold"):
+        predictions = (all_distances < t).astype(np.float32)
+        correct = (predictions == all_labels).sum()
+        acc = correct / len(all_labels)
+        accuracies.append(acc)
+
+    best_idx = np.argmax(accuracies)
+    best_threshold = thresholds[best_idx]
+    best_acc = accuracies[best_idx]
+    print(f"\n Best threshold = {best_threshold:.3f} → Accuracy = {best_acc*100:.2f}%")
+
+    plt.figure(figsize=(7, 5))
+    plt.plot(thresholds, accuracies, marker='o')
+    plt.xlabel("Threshold")
+    plt.ylabel("Accuracy")
+    plt.title("Accuracy vs Threshold")
+    plt.grid(True)
+
+    if save_path:
+        plt.savefig(save_path)
+        print(f"Accuracy vs Threshold plot saved to {save_path}")
+    else:
+        plt.show()
