@@ -42,4 +42,3 @@ def batch_preprocess_images(input_folder, output_folder, size=(300, 300)):
 
     print(f"\n{count} images have been processed, output path is {output_folder}")
 
-
