@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from siamese_model import SiameseNetwork
-from utils import SiameseDataset
+from utils import SiameseDataset, print_classification_report
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -35,8 +35,7 @@ def evaluate_accuracy(model, dataloader, threshold=0.5, device="cpu"):
             fn += ((prediction == 0) & (label == 1)).sum().item()
 
     accuracy = correct / total * 100
-    print(f"[VAL] Accuracy: {accuracy:.2f}%")
-    print(f"       TP: {tp}, TN: {tn}, FP: {fp}, FN: {fn}")
+    print_classification_report(tp, tn, fp, fn)
     return accuracy
 
 def main():

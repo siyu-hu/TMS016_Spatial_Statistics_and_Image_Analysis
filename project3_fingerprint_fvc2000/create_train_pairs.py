@@ -14,6 +14,18 @@ def load_images_by_finger(data_path):
         finger_dict[fid] = sorted(finger_dict[fid])
     return finger_dict
 
+def load_images_by_finger_tif(data_path):
+    """load tif (for DB3_B test images)"""
+    finger_dict = {}
+    for file in os.listdir(data_path):
+        if file.lower().endswith('.tif'):
+            finger_id = file.split('_')[0]
+            finger_dict.setdefault(finger_id, []).append(os.path.join(data_path, file))
+    for fid in finger_dict:
+        finger_dict[fid] = sorted(finger_dict[fid])
+    return finger_dict
+
+
 def create_pairs(finger_dict, selected_fingers):
     pairs = []
     labels = []

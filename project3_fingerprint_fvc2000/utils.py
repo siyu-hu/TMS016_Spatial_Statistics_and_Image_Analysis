@@ -146,6 +146,21 @@ import torch.nn.functional as F
 import numpy as np
 from tqdm import tqdm
 
+def print_classification_report(tp, tn, fp, fn):
+    total = tp + tn + fp + fn
+    acc = (tp + tn) / total * 100
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+    f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+
+    print("\n Classification Report:")
+    print(f"  Accuracy  : {acc:.2f}%")
+    print(f"  Precision : {precision:.4f}")
+    print(f"  Recall    : {recall:.4f}")
+    print(f"   F1 Score  : {f1:.4f}")
+    print(f"  TP={tp} | TN={tn} | FP={fp} | FN={fn}")
+
+
 def plot_accuracy_vs_threshold(model, dataloader, device="cpu", save_path=None):
     model.eval()
     thresholds = np.linspace(0.01, 0.15, 10)  
