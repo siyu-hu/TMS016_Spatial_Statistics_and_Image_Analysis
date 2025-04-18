@@ -1,5 +1,5 @@
 %--------------------------
-% Load image and colormap
+% Load image and colo
 %--------------------------
 x = imread('chalmersplatsen.jpg');
 [m,n,d] = size(x);% m,n is # of pixels, d is color componets.
