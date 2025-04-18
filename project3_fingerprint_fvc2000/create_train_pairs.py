@@ -23,7 +23,7 @@ def create_pairs(finger_dict, selected_fingers):
         # postive pairs(same finger)
         for img1, img2 in combinations(images, 2):
             pairs.append([img1, img2])
-            labels.append(1)
+            labels.append(1) # label = 1 ->> positive piar( same finger)
 
     # negative  pairs(different fingers, randomly selected)
     all_fingers = list(selected_fingers)
