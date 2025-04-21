@@ -42,11 +42,12 @@ def main():
     train_data_path = "./project3_fingerprint_fvc2000/data/train_pairs.npz"
     val_data_path = "./project3_fingerprint_fvc2000/data/val_pairs.npz"
     batch_size = 4
-    num_epochs = 3
+    num_epochs = 10
     learning_rate = 0.001
     margin = 1.0
-    ckpt_path = "./project3_fingerprint_fvc2000/checkpoints/best_model.pt"
-    resume = True  # Set to True to resume training from the last checkpoint
+    ckpt_filename = f"model_bs{batch_size}_ep{num_epochs}_lr{learning_rate}_mg{margin}.pt"
+    ckpt_path = f"./project3_fingerprint_fvc2000/checkpoints/{ckpt_filename}"
+    resume = False  # Set to True to resume training from the last checkpoint
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # -------------- Dataset + Dataloader -------------
@@ -83,6 +84,7 @@ def main():
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             save_checkpoint(model, ckpt_path)
+            print(f"Saved improved model to {ckpt_path}")
 
     plot_loss(train_losses, val_losses, save_path="./project3_fingerprint_fvc2000/outputs/loss_curve.png")
 
