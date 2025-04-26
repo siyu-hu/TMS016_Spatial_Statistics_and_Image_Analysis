@@ -22,14 +22,21 @@ class SiameseDataset(Dataset):
         img1_path, img2_path = self.pairs[idx]
         label = self.labels[idx]
 
-        img1 = np.load(img1_path)
-        img2 = np.load(img2_path)
+        if isinstance(img1_path, str):
+            img1 = np.load(img1_path)
+        else:
+            img1 = img1_path  #  array
 
-        img1_tensor = torch.tensor(img1).unsqueeze(0).float()  # [1, 300, 300]
-        img2_tensor = torch.tensor(img2).unsqueeze(0).float()
-        label_tensor = torch.tensor(label).float()
+        if isinstance(img2_path, str):
+            img2 = np.load(img2_path)
+        else:
+            img2 = img2_path
 
-        return img1_tensor, img2_tensor, label_tensor
+        img1 = torch.tensor(img1).unsqueeze(0)  # [1, H, W]
+        img2 = torch.tensor(img2).unsqueeze(0)
+        label = torch.tensor(label).float()
+
+        return img1, img2, label
 
 
 class ContrastiveLoss(nn.Module):
@@ -103,8 +110,6 @@ def plot_distance_distribution(model, dataloader, device="cpu", save_path=None):
         plt.show()
 
 
-
-
 def plot_roc_curve(model, dataloader, device="cpu", save_path=None):
     import torch.nn.functional as F
     model.eval()
@@ -140,11 +145,6 @@ def plot_roc_curve(model, dataloader, device="cpu", save_path=None):
     else:
         plt.show()
 
-import matplotlib.pyplot as plt
-import torch
-import torch.nn.functional as F
-import numpy as np
-from tqdm import tqdm
 
 def print_classification_report(tp, tn, fp, fn):
     total = tp + tn + fp + fn
@@ -159,7 +159,6 @@ def print_classification_report(tp, tn, fp, fn):
     print(f"  Recall    : {recall:.4f}")
     print(f"   F1 Score  : {f1:.4f}")
     print(f"  TP={tp} | TN={tn} | FP={fp} | FN={fn}")
-
 
 def plot_accuracy_vs_threshold(model, dataloader, device="cpu", save_path=None):
     model.eval()
@@ -176,7 +175,7 @@ def plot_accuracy_vs_threshold(model, dataloader, device="cpu", save_path=None):
             out1, out2 = model(img1, img2)
             dist = F.pairwise_distance(out1, out2)
             all_distances.extend(dist.cpu().numpy())
-            all_labels.extend(label.numpy())
+            all_labels.extend(label.cpu().numpy())
 
     all_distances = np.array(all_distances)
     all_labels = np.array(all_labels)
@@ -201,7 +200,14 @@ def plot_accuracy_vs_threshold(model, dataloader, device="cpu", save_path=None):
     plt.grid(True)
 
     if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
         plt.savefig(save_path)
         print(f"Accuracy vs Threshold plot saved to {save_path}")
     else:
         plt.show()
+
+    # Save the best threshold to a text file
+    threshold_txt_path = os.path.join(os.path.dirname(save_path), "best_threshold.txt")
+    with open(threshold_txt_path, "w") as f:
+        f.write(f"{best_threshold:.6f}")
+    print(f"Best threshold saved to {threshold_txt_path}")

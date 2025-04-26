@@ -4,6 +4,7 @@ from siamese_model import SiameseNetwork
 from utils import SiameseDataset, ContrastiveLoss, plot_loss, save_checkpoint
 import os
 from tqdm import tqdm
+import torch.nn as nn
 
 def train_one_epoch(model, dataloader, loss_fn, optimizer, device):
     model.train()
@@ -39,15 +40,15 @@ def validate(model, dataloader, loss_fn, device):
 
 def main():
     # -------------- Config --------------
-    train_data_path = "./project3_fingerprint_fvc2000/data/train_pairs.npz"
+    train_data_path = "./project3_fingerprint_fvc2000/data/train_pairs_augmented.npz"
     val_data_path = "./project3_fingerprint_fvc2000/data/val_pairs.npz"
     batch_size = 4
-    num_epochs = 10
+    num_epochs = 5
     learning_rate = 0.001
     margin = 1.0
-    ckpt_filename = f"model_bs{batch_size}_ep{num_epochs}_lr{learning_rate}_mg{margin}.pt"
+    ckpt_filename = f"model_augmented_bs{batch_size}_ep{num_epochs}_lr{learning_rate}_mg{margin}.pt"
     ckpt_path = f"./project3_fingerprint_fvc2000/checkpoints/{ckpt_filename}"
-    resume = False  # Set to True to resume training from the last checkpoint
+    resume = False  # IMPORTANT: Set to True to resume training from the last checkpoint
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # -------------- Dataset + Dataloader -------------

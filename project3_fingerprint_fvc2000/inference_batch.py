@@ -31,7 +31,7 @@ def inference_batch(model, pairs, labels, threshold=0.041, device="cpu"):
             correct += (prediction == label.item())
             total += 1
 
-            # 更新统计
+            # Update confusion matrix
             if prediction == 1.0 and label.item() == 1:
                 tp += 1
             elif prediction == 0.0 and label.item() == 0:
@@ -47,8 +47,21 @@ def inference_batch(model, pairs, labels, threshold=0.041, device="cpu"):
 
 def main():
     db3_path = "./project3_fingerprint_fvc2000/data/original/DB3_B"
-    model_path = "./project3_fingerprint_fvc2000/checkpoints/best_model.pt"
-    threshold = 0.041
+
+    # IMPORTANT: Change the model path to your trained model
+    model_path = "./project3_fingerprint_fvc2000/checkpoints/model_augmented_bs4_ep5_lr0.001_mg1.0.pt"
+    
+    # Load the best threshold from file if it exists
+    threshold_file = "./project3_fingerprint_fvc2000/outputs/best_threshold.txt"
+    if os.path.exists(threshold_file):
+        with open(threshold_file, "r") as f:
+            threshold = float(f.read().strip())
+        print(f"Loaded best threshold: {threshold}")
+    else:
+        threshold = 0.05  # fallback 
+        print(f" No threshold file found, using default threshold = {threshold}")
+
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = SiameseNetwork().to(device)
