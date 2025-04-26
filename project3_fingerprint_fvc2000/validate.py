@@ -44,11 +44,11 @@ def main():
     val_data_path = "./project3_fingerprint_fvc2000/data/val_pairs.npz"
 
     # IMPORTANT: Change the model path to your trained model
-    ckpt_path = "./project3_fingerprint_fvc2000/checkpoints/model_augFalse_bs4_ep5_lr0.0005_mg1.0.pt"
+    ckpt_path = "./project3_fingerprint_fvc2000/checkpoints/model_augTrue_blTrue_bs8_ep20_lr0.001_mg2.0.pt"
 
-    batch_size = 4
+    batch_size = 8
 
-    threshold = 0.06
+    threshold = 0.814286 
 
     # Load the best threshold from file if it exists
     # threshold_file = "./project3_fingerprint_fvc2000/outputs/best_threshold.txt"

@@ -58,8 +58,8 @@ def main():
     val_fingers = all_fingers[6:]     # validating set = 107 - 110
 
     # IMPORTANT
-    use_augmentation = False # TRUE for data augmentation
-    num_augments = 2 # number of augmentations per positive pair
+    use_augmentation = True # TRUE for data augmentation
+    num_augments = 4 # number of augmentations per positive pair
     balance_negatives = True  # TRUE for balancing number ofnegative samples to match number of positive samples
     
     if use_augmentation:

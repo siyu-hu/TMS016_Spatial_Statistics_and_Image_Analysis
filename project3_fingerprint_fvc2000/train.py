@@ -41,9 +41,9 @@ def validate(model, dataloader, loss_fn, device):
 
 def main():
     # -------------- Config --------------
-    use_augmentation = False  # IMPORTANT: Set to True if training on augmented data
+    use_augmentation = True  # IMPORTANT: Set to True if training on augmented data
     balance_negatives = True  # IMPORTANT: Should match how you created training pairs
-    num_augments = 2  # Just for record (affects ckpt name)
+    #num_augments = 4  # Just for record (affects ckpt name)
 
     if use_augmentation:
         train_data_path = "./project3_fingerprint_fvc2000/data/train_pairs_augmented.npz"
@@ -56,7 +56,7 @@ def main():
     batch_size = 8
     num_epochs = 20
     learning_rate = 0.001
-    margin = 1.0
+    margin = 2.0
     ckpt_filename = f"model_aug{use_augmentation}_bl{balance_negatives}_bs{batch_size}_ep{num_epochs}_lr{learning_rate}_mg{margin}.pt"
     ckpt_path = f"./project3_fingerprint_fvc2000/checkpoints/{ckpt_filename}"
     resume = False  # IMPORTANT: Set to True to resume training from the last checkpoint
@@ -78,8 +78,8 @@ def main():
         model.load_state_dict(torch.load(ckpt_path))
 
     loss_fn = ContrastiveLoss(margin=margin)
-    #optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) 
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) 
+    #optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
     scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=0.1, patience=2, verbose=True)
     early_stop_patience = 4      # if validation loss does not improve for this many epochs, stop training
     bad_epochs = 0

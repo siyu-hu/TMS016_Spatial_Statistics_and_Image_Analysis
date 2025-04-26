@@ -42,17 +42,19 @@ class SiameseDataset(Dataset):
 
 
 class ContrastiveLoss(nn.Module):
-    def __init__(self, margin=1.0):
-        super(ContrastiveLoss, self).__init__()
+    def __init__(self, margin=2.0):          
+        super().__init__()
         self.margin = margin
 
-    def forward(self, output1, output2, label):
-        distances = torch.nn.functional.pairwise_distance(output1, output2)
-        loss = torch.mean(
-            (1 - label) * torch.pow(distances, 2) +
-            label * torch.pow(torch.clamp(self.margin - distances, min=0.0), 2)
-        )
-        return loss
+    def forward(self, out1, out2, label):
+        # Euclidean distance between embeddings
+        d = torch.nn.functional.pairwise_distance(out1, out2)
+        # label = 1 → same finger  → target distance = 0
+        # label = 0 → different    → target distance ≥ margin
+        loss = label * d.pow(2) + (1 - label) * torch.clamp(self.margin - d, min=0.0).pow(2)
+        return loss.mean()                  # ← 缩进对齐
+
+
 
 
 def plot_loss(train_losses, val_losses, save_path=None):
@@ -217,7 +219,7 @@ def print_classification_report(tp, tn, fp, fn):
 
 def plot_metrics_vs_threshold(model, dataloader, device="cpu", save_path=None):
     model.eval()
-    thresholds = np.linspace(0.01, 0.3, 40)
+    thresholds = np.linspace(0.7, 1.1, 50)
     all_distances = []
     all_labels = []
 
