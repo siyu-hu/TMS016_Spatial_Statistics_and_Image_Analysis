@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 class SiameseNetwork(nn.Module):
     """
-    Lightweight Siamese CNN for 300 × 300 grayscale fingerprints.
+    Lightweight Siamese CNN for 300 * 300 grayscale fingerprints.
 
     Input  : two tensors of shape [B, 1, 300, 300]
     Output : two L2-normalised embedding tensors of shape [B, embedding_dim]

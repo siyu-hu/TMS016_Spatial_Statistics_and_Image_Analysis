@@ -5,6 +5,7 @@ from utils import SiameseDataset, ContrastiveLoss, plot_loss, save_checkpoint
 import os
 from tqdm import tqdm
 import torch.nn as nn
+from torch.optim.lr_scheduler import ReduceLROnPlateau 
 
 def train_one_epoch(model, dataloader, loss_fn, optimizer, device):
     model.train()
@@ -52,11 +53,11 @@ def main():
     val_data_path = "./project3_fingerprint_fvc2000/data/val_pairs.npz"
 
     val_data_path = "./project3_fingerprint_fvc2000/data/val_pairs.npz"
-    batch_size = 4
-    num_epochs = 5
-    learning_rate = 0.0005
+    batch_size = 8
+    num_epochs = 20
+    learning_rate = 0.001
     margin = 1.0
-    ckpt_filename = f"model_aug{use_augmentation}_bs{batch_size}_ep{num_epochs}_lr{learning_rate}_mg{margin}.pt"
+    ckpt_filename = f"model_aug{use_augmentation}_bl{balance_negatives}_bs{batch_size}_ep{num_epochs}_lr{learning_rate}_mg{margin}.pt"
     ckpt_path = f"./project3_fingerprint_fvc2000/checkpoints/{ckpt_filename}"
     resume = False  # IMPORTANT: Set to True to resume training from the last checkpoint
  
@@ -77,7 +78,11 @@ def main():
         model.load_state_dict(torch.load(ckpt_path))
 
     loss_fn = ContrastiveLoss(margin=margin)
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) 
+    #optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) 
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
+    scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=0.1, patience=2, verbose=True)
+    early_stop_patience = 4      # if validation loss does not improve for this many epochs, stop training
+    bad_epochs = 0
 
     # ------ Training Loop -----------------
     train_losses = []
@@ -94,10 +99,18 @@ def main():
 
         print(f"[Epoch {epoch+1}/{num_epochs}] Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}")
 
+        scheduler.step(val_loss)
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             save_checkpoint(model, ckpt_path)
             print(f"Saved improved model to {ckpt_path}")
+            bad_epochs = 0           # reset
+        else:
+            bad_epochs += 1
+        # early stopping
+        if bad_epochs >= early_stop_patience:
+            print("Early stopping triggered.")
+            break
 
     plot_loss(train_losses, val_losses, save_path="./project3_fingerprint_fvc2000/outputs/loss_curve.png")
 
