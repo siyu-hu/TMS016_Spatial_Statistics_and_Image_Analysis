@@ -40,15 +40,23 @@ def validate(model, dataloader, loss_fn, device):
 
 def main():
     # -------------- Config --------------
-    use_augmentation = False #IMPORTANT: Set to True to use data augmentation
-    train_data_path = "./project3_fingerprint_fvc2000/data/train_pairs_augmented.npz" if use_augmentation \
-                  else "./project3_fingerprint_fvc2000/data/train_pairs.npz"
+    use_augmentation = False  # IMPORTANT: Set to True if training on augmented data
+    balance_negatives = True  # IMPORTANT: Should match how you created training pairs
+    num_augments = 2  # Just for record (affects ckpt name)
+
+    if use_augmentation:
+        train_data_path = "./project3_fingerprint_fvc2000/data/train_pairs_augmented.npz"
+    else:
+        train_data_path = "./project3_fingerprint_fvc2000/data/train_pairs.npz"
+        
+    val_data_path = "./project3_fingerprint_fvc2000/data/val_pairs.npz"
+
     val_data_path = "./project3_fingerprint_fvc2000/data/val_pairs.npz"
     batch_size = 4
     num_epochs = 5
-    learning_rate = 0.001
+    learning_rate = 0.0005
     margin = 1.0
-    ckpt_filename = f"model_augmented_bs{batch_size}_ep{num_epochs}_lr{learning_rate}_mg{margin}.pt"
+    ckpt_filename = f"model_aug{use_augmentation}_bs{batch_size}_ep{num_epochs}_lr{learning_rate}_mg{margin}.pt"
     ckpt_path = f"./project3_fingerprint_fvc2000/checkpoints/{ckpt_filename}"
     resume = False  # IMPORTANT: Set to True to resume training from the last checkpoint
  

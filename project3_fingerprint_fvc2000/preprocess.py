@@ -57,17 +57,39 @@ def main():
     train_fingers = all_fingers[:6]   # training set = 101 - 106 
     val_fingers = all_fingers[6:]     # validating set = 107 - 110
 
-    use_augmentation = False 
+    # IMPORTANT
+    use_augmentation = False # TRUE for data augmentation
+    num_augments = 2 # number of augmentations per positive pair
+    balance_negatives = True  # TRUE for balancing number ofnegative samples to match number of positive samples
     
     if use_augmentation:
-        train_pairs, train_labels = create_pairs(finger_dict, train_fingers, augment_positive=True, num_augments=2)
+        train_pairs, train_labels = create_pairs(finger_dict, train_fingers, 
+                                                 augment_positive=use_augmentation, 
+                                                 num_augments=num_augments, 
+                                                 balance_negatives=balance_negatives)
         save_pairs(train_pairs, train_labels, "./project3_fingerprint_fvc2000/data/train_pairs_augmented")
     else:
-        train_pairs, train_labels = create_pairs(finger_dict, train_fingers)
+        train_pairs, train_labels = create_pairs(finger_dict, train_fingers, 
+                                                 augment_positive=False, 
+                                                 num_augments=0, 
+                                                 balance_negatives=balance_negatives)
         save_pairs(train_pairs, train_labels, "./project3_fingerprint_fvc2000/data/train_pairs")
-        
+    
+    # ============================================
+    num_pos = np.sum(np.array(train_labels) == 1)
+    num_neg = np.sum(np.array(train_labels) == 0)
+    print(f"\nTrain Pairs Stats:")
+    print(f"  Positive pairs: {num_pos}")
+    print(f"  Negative pairs: {num_neg}")
+    print(f"  Total pairs   : {len(train_labels)}")
+    print(f"  Positive Ratio: {num_pos / len(train_labels):.2%}")
+    print(f"  Negative Ratio: {num_neg / len(train_labels):.2%}")
+    # ============================================
 
-    val_pairs, val_labels = create_pairs(finger_dict, val_fingers)
+    val_pairs, val_labels = create_pairs(finger_dict, val_fingers, 
+                                         augment_positive=False, 
+                                         num_augments=0, 
+                                         balance_negatives=False)
     save_pairs(val_pairs, val_labels, "./project3_fingerprint_fvc2000/data/val_pairs")
 
 

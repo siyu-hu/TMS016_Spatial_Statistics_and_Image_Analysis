@@ -46,21 +46,22 @@ def inference_batch(model, pairs, labels, threshold=0.041, device="cpu"):
 
 
 def main():
-    db3_path = "./project3_fingerprint_fvc2000/data/original/DB3_B"
-
+    #db3_path = "./project3_fingerprint_fvc2000/data/original/DB3_B"
+    inference_data_path = "./project3_fingerprint_fvc2000/data/original/DB2_B"
     # IMPORTANT: Change the model path to your trained model
-    model_path = "./project3_fingerprint_fvc2000/checkpoints/model_augmented_bs4_ep5_lr0.001_mg1.0.pt"
+    model_path = "./project3_fingerprint_fvc2000/checkpoints/model_augFalse_bs4_ep5_lr0.0005_mg1.0.pt"
     
     
     # Load the best threshold from file if it exists
-    threshold_file = "./project3_fingerprint_fvc2000/outputs/best_threshold.txt"
-    if os.path.exists(threshold_file):
-        with open(threshold_file, "r") as f:
-            threshold = float(f.read().strip())
-        print(f"Loaded best threshold: {threshold}")
-    else:
-        threshold = 0.05  # fallback 
-        print(f" No threshold file found, using default threshold = {threshold}")
+    threshold = 0.04
+    # threshold_file = "./project3_fingerprint_fvc2000/outputs/best_threshold.txt"
+    # if os.path.exists(threshold_file):
+    #     with open(threshold_file, "r") as f:
+    #         threshold = float(f.read().strip())
+    #     print(f"Loaded best threshold: {threshold}")
+    # else:
+    #     threshold = 0.05  # fallback 
+    #     print(f" No threshold file found, using default threshold = {threshold}")
 
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -69,8 +70,8 @@ def main():
     model.load_state_dict(torch.load(model_path, map_location=device))
     print(f" Loaded model from {model_path}")
 
-    # load DB3_B images and create pairs
-    finger_dict = load_images_by_finger_tif(db3_path)
+    # load inference_data_path images and create pairs
+    finger_dict = load_images_by_finger_tif(inference_data_path)
     selected_fingers = sorted(finger_dict.keys())
     pairs, labels = create_pairs(finger_dict, selected_fingers)
 

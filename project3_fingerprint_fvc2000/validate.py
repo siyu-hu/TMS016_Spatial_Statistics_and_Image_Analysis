@@ -5,7 +5,7 @@ from utils import SiameseDataset, print_classification_report
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from utils import plot_distance_distribution, plot_roc_curve, plot_accuracy_vs_threshold
+from utils import plot_distance_distribution, plot_roc_curve, plot_metrics_vs_threshold
 import os
 
 
@@ -44,19 +44,21 @@ def main():
     val_data_path = "./project3_fingerprint_fvc2000/data/val_pairs.npz"
 
     # IMPORTANT: Change the model path to your trained model
-    ckpt_path = "./project3_fingerprint_fvc2000/checkpoints/model_bs4_ep5_lr0.001_mg1.0.pt"
+    ckpt_path = "./project3_fingerprint_fvc2000/checkpoints/model_augFalse_bs4_ep5_lr0.0005_mg1.0.pt"
 
     batch_size = 4
 
+    threshold = 0.06
+
     # Load the best threshold from file if it exists
-    threshold_file = "./project3_fingerprint_fvc2000/outputs/best_threshold.txt"
-    if os.path.exists(threshold_file):
-        with open(threshold_file, "r") as f:
-            threshold = float(f.read().strip())
-        print(f"Loaded best threshold: {threshold}")
-    else:
-        threshold = 0.05  # fallback 默认
-        print(f"No threshold file found, using default threshold = {threshold}")
+    # threshold_file = "./project3_fingerprint_fvc2000/outputs/best_threshold.txt"
+    # if os.path.exists(threshold_file):
+    #     with open(threshold_file, "r") as f:
+    #         threshold = float(f.read().strip())
+    #     print(f"Loaded best threshold: {threshold}")
+    # else:
+    #     threshold = 0.05  # fallback 
+    #     print(f"No threshold file found, using default threshold = {threshold}")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -70,7 +72,8 @@ def main():
     evaluate_accuracy(model, val_loader, threshold, device)
     plot_distance_distribution(model, val_loader, device, save_path="./project3_fingerprint_fvc2000/outputs/distance_hist.png")
     plot_roc_curve(model, val_loader, device, save_path="./project3_fingerprint_fvc2000/outputs/roc_curve.png")
-    plot_accuracy_vs_threshold(model, val_loader, device,save_path="./project3_fingerprint_fvc2000/outputs/accuracy_vs_threshold.png")
+    #plot_accuracy_vs_threshold(model, val_loader, device,save_path="./project3_fingerprint_fvc2000/outputs/accuracy_vs_threshold.png")
+    plot_metrics_vs_threshold(model, val_loader, device, save_path="./project3_fingerprint_fvc2000/outputs/metrics_vs_threshold.png")
 
 if __name__ == "__main__":
     main()

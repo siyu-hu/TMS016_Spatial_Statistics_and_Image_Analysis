@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 import torch.nn.functional as F
 from tqdm import tqdm
+from sklearn.metrics import precision_score, recall_score, f1_score
+
 
 class SiameseDataset(Dataset):
     def __init__(self, npz_file):
@@ -160,54 +162,116 @@ def print_classification_report(tp, tn, fp, fn):
     print(f"   F1 Score  : {f1:.4f}")
     print(f"  TP={tp} | TN={tn} | FP={fp} | FN={fn}")
 
-def plot_accuracy_vs_threshold(model, dataloader, device="cpu", save_path=None):
-    model.eval()
-    thresholds = np.linspace(0.01, 0.15, 10)  
-    accuracies = []
+# def plot_accuracy_vs_threshold(model, dataloader, device="cpu", save_path=None):
+#     model.eval()
+#     thresholds = np.linspace(0.01, 0.15, 10)  
+#     accuracies = []
 
+#     all_distances = []
+#     all_labels = []
+
+#     print(" Extracting embeddings...")
+#     with torch.no_grad():
+#         for img1, img2, label in tqdm(dataloader, desc="Forward pass"):
+#             img1, img2 = img1.to(device), img2.to(device)
+#             out1, out2 = model(img1, img2)
+#             dist = F.pairwise_distance(out1, out2)
+#             all_distances.extend(dist.cpu().numpy())
+#             all_labels.extend(label.cpu().numpy())
+
+#     all_distances = np.array(all_distances)
+#     all_labels = np.array(all_labels)
+
+#     print("Calculating accuracy for thresholds...")
+#     for t in tqdm(thresholds, desc="Threshold"):
+#         predictions = (all_distances < t).astype(np.float32)
+#         correct = (predictions == all_labels).sum()
+#         acc = correct / len(all_labels)
+#         accuracies.append(acc)
+
+#     best_idx = np.argmax(accuracies)
+#     best_threshold = thresholds[best_idx]
+#     best_acc = accuracies[best_idx]
+#     print(f"\n Best threshold = {best_threshold:.3f} → Accuracy = {best_acc*100:.2f}%")
+
+#     plt.figure(figsize=(7, 5))
+#     plt.plot(thresholds, accuracies, marker='o')
+#     plt.xlabel("Threshold")
+#     plt.ylabel("Accuracy")
+#     plt.title("Accuracy vs Threshold")
+#     plt.grid(True)
+
+#     if save_path:
+#         os.makedirs(os.path.dirname(save_path), exist_ok=True)
+#         plt.savefig(save_path)
+#         print(f"Accuracy vs Threshold plot saved to {save_path}")
+#     else:
+#         plt.show()
+
+#     # Save the best threshold to a text file
+#     threshold_txt_path = os.path.join(os.path.dirname(save_path), "best_threshold.txt")
+#     with open(threshold_txt_path, "w") as f:
+#         f.write(f"{best_threshold:.6f}")
+#     print(f"Best threshold saved to {threshold_txt_path}")
+
+
+def plot_metrics_vs_threshold(model, dataloader, device="cpu", save_path=None):
+    model.eval()
+    thresholds = np.linspace(0.01, 0.3, 40)
     all_distances = []
     all_labels = []
 
-    print(" Extracting embeddings...")
+    print("Extracting embeddings...")
     with torch.no_grad():
         for img1, img2, label in tqdm(dataloader, desc="Forward pass"):
             img1, img2 = img1.to(device), img2.to(device)
             out1, out2 = model(img1, img2)
             dist = F.pairwise_distance(out1, out2)
             all_distances.extend(dist.cpu().numpy())
-            all_labels.extend(label.cpu().numpy())
+            all_labels.extend(label.numpy())
 
     all_distances = np.array(all_distances)
     all_labels = np.array(all_labels)
 
-    print("Calculating accuracy for thresholds...")
+    accuracies = []
+    precisions = []
+    recalls = []
+    f1s = []
+
+    print("Calculating metrics for thresholds...")
     for t in tqdm(thresholds, desc="Threshold"):
-        predictions = (all_distances < t).astype(np.float32)
-        correct = (predictions == all_labels).sum()
-        acc = correct / len(all_labels)
-        accuracies.append(acc)
+        preds = (all_distances < t).astype(int)
+        accuracies.append((preds == all_labels).mean())
+        precisions.append(precision_score(all_labels, preds, zero_division=0))
+        recalls.append(recall_score(all_labels, preds, zero_division=0))
+        f1s.append(f1_score(all_labels, preds, zero_division=0))
 
-    best_idx = np.argmax(accuracies)
+    best_idx = np.argmax(f1s)
     best_threshold = thresholds[best_idx]
-    best_acc = accuracies[best_idx]
-    print(f"\n Best threshold = {best_threshold:.3f} → Accuracy = {best_acc*100:.2f}%")
+    best_f1 = f1s[best_idx]
+    print(f"\n Best threshold = {best_threshold:.6f} → F1 Score = {best_f1:.6f}")
 
-    plt.figure(figsize=(7, 5))
-    plt.plot(thresholds, accuracies, marker='o')
+    # Plot all metrics
+    plt.figure(figsize=(10, 6))
+    plt.plot(thresholds, accuracies, label="Accuracy")
+    plt.plot(thresholds, precisions, label="Precision")
+    plt.plot(thresholds, recalls, label="Recall")
+    plt.plot(thresholds, f1s, label="F1 Score")
     plt.xlabel("Threshold")
-    plt.ylabel("Accuracy")
-    plt.title("Accuracy vs Threshold")
+    plt.ylabel("Metric Value")
+    plt.title("Metrics vs Threshold")
+    plt.legend()
     plt.grid(True)
 
     if save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         plt.savefig(save_path)
-        print(f"Accuracy vs Threshold plot saved to {save_path}")
+        print(f"Metrics plot saved to {save_path}")
     else:
         plt.show()
 
-    # Save the best threshold to a text file
-    threshold_txt_path = os.path.join(os.path.dirname(save_path), "best_threshold.txt")
-    with open(threshold_txt_path, "w") as f:
+    with open("./project3_fingerprint_fvc2000/outputs/best_threshold.txt", "w") as f:
         f.write(f"{best_threshold:.6f}")
-    print(f"Best threshold saved to {threshold_txt_path}")
+    print("Best threshold saved to outputs/best_threshold.txt")
+
+    return best_threshold

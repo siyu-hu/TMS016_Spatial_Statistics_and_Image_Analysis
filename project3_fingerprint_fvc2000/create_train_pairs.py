@@ -3,6 +3,8 @@ import numpy as np
 import random
 from itertools import combinations
 from augment_images import random_affine_transform
+from sklearn.utils import shuffle
+
 
 def load_images_by_finger(data_path):
     """key = finger_id; value = image path list"""
@@ -27,15 +29,18 @@ def load_images_by_finger_tif(data_path):
     return finger_dict
 
 
-def create_pairs(finger_dict, selected_fingers, augment_positive=False, num_augments=2):
+def create_pairs(finger_dict, selected_fingers, augment_positive=False, num_augments=2,balance_negatives=False):
     """
     Create positive and negative pairs.
     If augment_positive=True, perform data augmentation on positive pairs.
+    If balance_negatives=True, sample negative pairs to match positive pairs count.
+    
     Args:
         finger_dict: dict of {finger_id: list of npy file paths}
         selected_fingers: list of selected finger ids
         augment_positive: whether to augment positive pairs
         num_augments: how many augmentations per positive pair
+        balance_negatives: whether to balance negative samples
     """
     pairs = []
     labels = []
@@ -60,8 +65,11 @@ def create_pairs(finger_dict, selected_fingers, augment_positive=False, num_augm
                     # save temporary augmented images in memory
                     pairs.append([aug1, aug2])
                     labels.append(1)
+        
+    num_positive = sum(1 for l in labels if l == 1)
 
     # negative pairs (different fingers, randomly selected)
+    negative_pairs = []
     all_fingers = list(selected_fingers)
     for i in range(len(all_fingers)):
         for j in range(i+1, len(all_fingers)):
@@ -69,9 +77,18 @@ def create_pairs(finger_dict, selected_fingers, augment_positive=False, num_augm
             imgs2 = finger_dict[all_fingers[j]]
             for img1 in imgs1:
                 for img2 in imgs2:
-                    pairs.append([img1, img2])
-                    labels.append(0)  # label = 0 ->> negative pair (different fingers) 
+                    negative_pairs.append(([img1, img2], 0))
 
+    if balance_negatives:
+        # Randomly sample same number of negative pairs as positive pairs
+        negative_pairs = random.sample(negative_pairs, min(num_positive, len(negative_pairs)))
+
+    # Add negative pairs
+    for pair, label in negative_pairs:
+        pairs.append(pair)
+        labels.append(label)
+
+    pairs, labels = shuffle(pairs, labels, random_state=42) 
     return pairs, labels
 
 
