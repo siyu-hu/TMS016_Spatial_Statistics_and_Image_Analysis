@@ -10,13 +10,13 @@ from utils import print_classification_report
 from random import sample
 
 
-def inference_batch(model, pairs, labels, threshold=0.041, device="cpu"):
+def inference_batch(model, pairs, labels, threshold=0.041, device="cpu", desc="Inferencing"):
     model.eval()
     correct = 0
     total = 0
     tp = tn = fp = fn = 0
 
-    for (img1_path, img2_path), label in tqdm(zip(pairs, labels), total=len(pairs), desc="Inferencing"):
+    for (img1_path, img2_path), label in tqdm(zip(pairs, labels), total=len(pairs), desc=desc):
         img1 = normalize(img1_path)
         img2 = normalize(img2_path)
 
@@ -47,7 +47,7 @@ def inference_batch(model, pairs, labels, threshold=0.041, device="cpu"):
 
 
 def auto_calibrate_threshold(model, calib_pairs, calib_labels, device="cpu",
-                             search_min=0.0, search_max=1.2, steps=120):
+                             search_min=0.0, search_max=2.0, steps=120):
     """
     Given a batch of calibrated pairs + labels, scan the threshold to find the highest F1 point.
     Returns: best_threshold, best_f1
@@ -57,8 +57,10 @@ def auto_calibrate_threshold(model, calib_pairs, calib_labels, device="cpu",
 
     with torch.no_grad():
         for (p1, p2), _ in zip(calib_pairs, calib_labels):
-            a = torch.from_numpy(np.load(p1)).unsqueeze(0).unsqueeze(0).to(device)
-            b = torch.from_numpy(np.load(p2)).unsqueeze(0).unsqueeze(0).to(device)
+            a_arr = normalize(p1)   
+            b_arr = normalize(p2)
+            a = torch.from_numpy(a_arr).unsqueeze(0).unsqueeze(0).to(device)
+            b = torch.from_numpy(b_arr).unsqueeze(0).unsqueeze(0).to(device)
             f1, f2 = model(a, b)
             dists.append(F.pairwise_distance(f1, f2).item())
 
@@ -103,27 +105,38 @@ def main():
                                  augment_positive=False, num_augments=0,
                                  balance_negatives=False)
     
-    # ------------ 20 % calibrate, 80 % infer ------------
-    idx = np.arange(len(pairs))
-    np.random.seed(42)
-    np.random.shuffle(idx)
+    # # ------------ 20 % calibrate(pos:neg ~= 1:1), 80 % infer ------------
+    # pos_idx = [i for i, l in enumerate(labels) if l == 1]
+    # neg_idx = [i for i, l in enumerate(labels) if l == 0]
+    # np.random.seed(42)
+    # np.random.shuffle(pos_idx);  np.random.shuffle(neg_idx)
 
-    split = int(0.2 * len(idx))
-    calib_idx, infer_idx = idx[:split], idx[split:]
+    # cap = int(0.2 * len(labels))                      
+    # n_pos_calib = min(len(pos_idx), cap // 2)         
+    # n_neg_calib = min(len(neg_idx), cap - n_pos_calib)  
+    # calib_idx   = pos_idx[:n_pos_calib] + neg_idx[:n_neg_calib]  
+    # np.random.shuffle(calib_idx)                     
 
-    calib_pairs  = [pairs[i]  for i in calib_idx]
-    calib_labels = [labels[i] for i in calib_idx]
-    infer_pairs  = [pairs[i]  for i in infer_idx]
-    infer_labels = [labels[i] for i in infer_idx]
+    # calib_pairs  = [pairs[i]  for i in calib_idx]
+    # calib_labels = [labels[i] for i in calib_idx]
 
-    print(f"Calibration pairs : {len(calib_pairs)}")
-    threshold, f1_calib = auto_calibrate_threshold(model, calib_pairs, calib_labels, device)
-    print(f"Auto-calibrated threshold = {threshold:.4f}  (F1 on calib = {f1_calib:.4f})")
+    # print(f"[Calib] Positive={sum(calib_labels)} | Negative={len(calib_labels)-sum(calib_labels)}")
+    # threshold, f1_calib = auto_calibrate_threshold(model, calib_pairs, calib_labels, device)
+    # print(f"Auto-calibrated threshold = {threshold:.4f}  (F1 on calib = {f1_calib:.4f})")
 
-    # ------------ final inference ------------
-    inference_batch(model, infer_pairs, infer_labels,
-                    threshold=threshold, device=device, desc="Inference-80%")
+
+    # # ------------ final inference ------------
+    # n_pos = sum(labels)                  # label == 1
+    # n_neg = len(labels) - n_pos          # label == 0
+    # print(f"[All pairs] Positive={n_pos}  |  Negative={n_neg}  "
+    #     f"({n_pos/len(labels):.2%} positive)")
+    # inference_batch(model, pairs, labels,
+    #             threshold=threshold, device=device, desc="Infer-100%")
     
 
+    for t in [0.60, 0.68, 0.72, 0.80]:
+        print(f"\n=== threshold {t} ===")
+        inference_batch(model, pairs, labels, t, device, desc=f"@{t}")
+    
 if __name__ == "__main__":
     main()
