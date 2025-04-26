@@ -27,7 +27,7 @@ def load_images_by_finger_tif(data_path):
     return finger_dict
 
 
-def create_pairs(finger_dict, selected_fingers, augment_positive=False, num_augments=1):
+def create_pairs(finger_dict, selected_fingers, augment_positive=False, num_augments=2):
     """
     Create positive and negative pairs.
     If augment_positive=True, perform data augmentation on positive pairs.
@@ -42,61 +42,39 @@ def create_pairs(finger_dict, selected_fingers, augment_positive=False, num_augm
 
     for fid in selected_fingers:
         images = finger_dict[fid]
-        # positive pairs (same finger)
-        for img1_path, img2_path in combinations(images, 2):
-            pairs.append([img1_path, img2_path])
-            labels.append(1)
+
+        # postive pairs (same finger)
+        for img1, img2 in combinations(images, 2):
+            pairs.append([img1, img2])
+            labels.append(1) # label = 1 ->> positive pair (same finger)
 
             if augment_positive:
-                # Load image arrays
-                img1 = np.load(img1_path)
-                img2 = np.load(img2_path)
+                # add data augmentation for positive pairs
+                img1_arr = np.load(img1)
+                img2_arr = np.load(img2)
 
                 for _ in range(num_augments):
-                    aug1 = random_affine_transform(img1)
-                    aug2 = random_affine_transform(img2)
+                    aug1 = random_affine_transform(img1_arr)
+                    aug2 = random_affine_transform(img2_arr)
 
-                    # Save temporary augmented images in memory
+                    # save temporary augmented images in memory
                     pairs.append([aug1, aug2])
                     labels.append(1)
 
-    # negative pairs (different fingers)
+    # negative pairs (different fingers, randomly selected)
     all_fingers = list(selected_fingers)
     for i in range(len(all_fingers)):
         for j in range(i+1, len(all_fingers)):
             imgs1 = finger_dict[all_fingers[i]]
             imgs2 = finger_dict[all_fingers[j]]
-            for img1_path in imgs1:
-                for img2_path in imgs2:
-                    pairs.append([img1_path, img2_path])
-                    labels.append(0)
+            for img1 in imgs1:
+                for img2 in imgs2:
+                    pairs.append([img1, img2])
+                    labels.append(0)  # label = 0 ->> negative pair (different fingers) 
 
     return pairs, labels
 
-# def create_pairs(finger_dict, selected_fingers):
-#    "basic version - without augmentation" 
-#     pairs = []
-#     labels = []
 
-#     for fid in selected_fingers:
-#         images = finger_dict[fid]
-#         # postive pairs(same finger)
-#         for img1, img2 in combinations(images, 2):
-#             pairs.append([img1, img2])
-#             labels.append(1) # label = 1 ->> positive piar( same finger)
-
-#     # negative  pairs(different fingers, randomly selected)
-#     all_fingers = list(selected_fingers)
-#     for i in range(len(all_fingers)):
-#         for j in range(i+1, len(all_fingers)):
-#             imgs1 = finger_dict[all_fingers[i]]
-#             imgs2 = finger_dict[all_fingers[j]]
-#             for img1 in imgs1:
-#                 for img2 in imgs2:
-#                     pairs.append([img1, img2])
-#                     labels.append(0)
-
-#     return pairs, labels
 
 def save_pairs(pairs, labels, output_file):
     pairs = np.array(pairs, dtype=object)  # [img1_path, img2_path]

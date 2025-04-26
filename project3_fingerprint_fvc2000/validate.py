@@ -44,7 +44,7 @@ def main():
     val_data_path = "./project3_fingerprint_fvc2000/data/val_pairs.npz"
 
     # IMPORTANT: Change the model path to your trained model
-    ckpt_path = "./project3_fingerprint_fvc2000/checkpoints/model_augmented_bs4_ep5_lr0.001_mg1.0.pt"
+    ckpt_path = "./project3_fingerprint_fvc2000/checkpoints/model_bs4_ep5_lr0.001_mg1.0.pt"
 
     batch_size = 4
 

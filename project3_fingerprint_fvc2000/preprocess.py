@@ -56,17 +56,20 @@ def main():
         
     train_fingers = all_fingers[:6]   # training set = 101 - 106 
     val_fingers = all_fingers[6:]     # validating set = 107 - 110
+
+    use_augmentation = False 
     
+    if use_augmentation:
+        train_pairs, train_labels = create_pairs(finger_dict, train_fingers, augment_positive=True, num_augments=2)
+        save_pairs(train_pairs, train_labels, "./project3_fingerprint_fvc2000/data/train_pairs_augmented")
+    else:
+        train_pairs, train_labels = create_pairs(finger_dict, train_fingers)
+        save_pairs(train_pairs, train_labels, "./project3_fingerprint_fvc2000/data/train_pairs")
+        
 
-    # train_pairs, train_labels = create_pairs(finger_dict, train_fingers)
-    # save_pairs(train_pairs, train_labels, "./project3_fingerprint_fvc2000/data/train_pairs")
-
-    train_pairs, train_labels = create_pairs(finger_dict, train_fingers, augment_positive=True, num_augments=2)
-    save_pairs(train_pairs, train_labels, "./project3_fingerprint_fvc2000/data/train_pairs_augmented")
-
-    # val_pairs, val_labels = create_pairs(finger_dict, val_fingers)
-    val_pairs, val_labels = create_pairs(finger_dict, val_fingers, augment_positive=False)
+    val_pairs, val_labels = create_pairs(finger_dict, val_fingers)
     save_pairs(val_pairs, val_labels, "./project3_fingerprint_fvc2000/data/val_pairs")
+
 
     # data = np.load("./project3_fingerprint_fvc2000/data/train_pairs.npz", allow_pickle=True)
     # pairs = data["pairs"]

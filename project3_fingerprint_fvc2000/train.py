@@ -40,7 +40,9 @@ def validate(model, dataloader, loss_fn, device):
 
 def main():
     # -------------- Config --------------
-    train_data_path = "./project3_fingerprint_fvc2000/data/train_pairs_augmented.npz"
+    use_augmentation = False #IMPORTANT: Set to True to use data augmentation
+    train_data_path = "./project3_fingerprint_fvc2000/data/train_pairs_augmented.npz" if use_augmentation \
+                  else "./project3_fingerprint_fvc2000/data/train_pairs.npz"
     val_data_path = "./project3_fingerprint_fvc2000/data/val_pairs.npz"
     batch_size = 4
     num_epochs = 5
@@ -49,6 +51,8 @@ def main():
     ckpt_filename = f"model_augmented_bs{batch_size}_ep{num_epochs}_lr{learning_rate}_mg{margin}.pt"
     ckpt_path = f"./project3_fingerprint_fvc2000/checkpoints/{ckpt_filename}"
     resume = False  # IMPORTANT: Set to True to resume training from the last checkpoint
+ 
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # -------------- Dataset + Dataloader -------------

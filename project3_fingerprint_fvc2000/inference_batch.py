@@ -51,6 +51,7 @@ def main():
     # IMPORTANT: Change the model path to your trained model
     model_path = "./project3_fingerprint_fvc2000/checkpoints/model_augmented_bs4_ep5_lr0.001_mg1.0.pt"
     
+    
     # Load the best threshold from file if it exists
     threshold_file = "./project3_fingerprint_fvc2000/outputs/best_threshold.txt"
     if os.path.exists(threshold_file):
