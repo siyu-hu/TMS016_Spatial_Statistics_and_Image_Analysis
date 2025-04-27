@@ -8,6 +8,7 @@ from create_train_pairs import load_images_by_finger_tif, create_pairs
 from siamese_model import SiameseNetwork
 from utils import print_classification_report
 from random import sample
+import argparse
 
 
 def inference_batch(model, pairs, labels, threshold=0.041, device="cpu", desc="Inferencing"):
@@ -86,11 +87,16 @@ def auto_calibrate_threshold(model, calib_pairs, calib_labels, device="cpu",
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--inference_data", type=str, required=True, help="Path to inference images folder")
+    parser.add_argument("--ckpt", type=str, required=True, help="Path to model checkpoint")
+    parser.add_argument("--thresholds", nargs='+', type=float, required=True,
+                    help="List of thresholds to try, e.g., 0.83 0.85 0.87 0.90")
+    args = parser.parse_args()
+
     # ------------ paths ------------
-    #inference_data_path = "./project3_fingerprint_fvc2000/data/original/DB3_B"
-    inference_data_path = "./project3_fingerprint_fvc2000/data/original/DB2_B"
-    # IMPORTANT: Change the model path to your trained model
-    model_path = "./project3_fingerprint_fvc2000/checkpoints/model_augTrue_blTrue_bs8_ep20_lr0.001_mg2.0.pt"
+    inference_data_path = args.inference_data
+    model_path = args.ckpt
     
 
     # ------------ device / model ------------
@@ -132,9 +138,9 @@ def main():
     #     f"({n_pos/len(labels):.2%} positive)")
     # inference_batch(model, pairs, labels,
     #             threshold=threshold, device=device, desc="Infer-100%")
-    
+    print(f"[Inference] Total pairs: {len(pairs)}")
 
-    for t in [0.60, 0.68, 0.72, 0.80]:
+    for t in args.thresholds:
         print(f"\n=== threshold {t} ===")
         inference_batch(model, pairs, labels, t, device, desc=f"@{t}")
     

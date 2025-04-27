@@ -6,6 +6,21 @@ import os
 from tqdm import tqdm
 import torch.nn as nn
 from torch.optim.lr_scheduler import ReduceLROnPlateau 
+# --- add CLI -------------------------------------------
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--train_pairs", default=None)
+parser.add_argument("--val_pairs",   default=None)
+parser.add_argument("--finetune", action="store_true",
+                    help="Continue training from --best_ckpt with typically fewer epochs / lower lr")
+
+parser.add_argument("--lr",          type=float)
+parser.add_argument("--num_epochs",  type=int)
+parser.add_argument("--use_aug",     action="store_true")  
+parser.add_argument("--balance_neg", action="store_true")  
+parser.add_argument("--best_ckpt",   default=None)   
+args = parser.parse_args()
+# --------------------------------------------------------
 
 def train_one_epoch(model, dataloader, loss_fn, optimizer, device):
     model.train()
@@ -41,41 +56,51 @@ def validate(model, dataloader, loss_fn, device):
 
 def main():
     # -------------- Config --------------
-    use_augmentation = True  # IMPORTANT: Set to True if training on augmented data
-    balance_negatives = True  # IMPORTANT: Should match how you created training pairs
-    #num_augments = 4  # Just for record (affects ckpt name)
+    use_augmentation = args.use_aug # IMPORTANT: Set to True if training on augmented data
+    balance_negatives = args.balance_neg  # IMPORTANT: Should match how you created training pairs
+    finetune = args.finetune    # IMPORTANT: Set to True to continue training from the best checkpoint
+
 
     if use_augmentation:
-        train_data_path = "./project3_fingerprint_fvc2000/data/train_pairs_augmented.npz"
+        default_train_path = "./data/train_pairs_augmented.npz"
     else:
-        train_data_path = "./project3_fingerprint_fvc2000/data/train_pairs.npz"
-        
-    val_data_path = "./project3_fingerprint_fvc2000/data/val_pairs.npz"
+        default_train_path = "./data/train_pairs.npz"
 
-    val_data_path = "./project3_fingerprint_fvc2000/data/val_pairs.npz"
+    train_data_path = args.train_pairs or default_train_path
+    val_data_path   = args.val_pairs or "./data/val_pairs.npz"
+
+
     batch_size = 8
-    num_epochs = 20
-    learning_rate = 0.001
     margin = 2.0
-    ckpt_filename = f"model_aug{use_augmentation}_bl{balance_negatives}_bs{batch_size}_ep{num_epochs}_lr{learning_rate}_mg{margin}.pt"
-    ckpt_path = f"./project3_fingerprint_fvc2000/checkpoints/{ckpt_filename}"
-    resume = False  # IMPORTANT: Set to True to resume training from the last checkpoint
- 
 
+    if args.finetune:                
+        default_lr     = 1e-4
+        default_epoch  = 3
+    else:                            
+        default_lr     = 1e-3
+        default_epoch  = 20
+
+    learning_rate = args.lr if args.lr is not None else default_lr
+    num_epochs    = args.num_epochs if args.num_epochs is not None else default_epoch
+
+    # output ckpt 
+    ckpt_filename = f"model_ft{finetune}_aug{use_augmentation}_bl{balance_negatives}_bs{batch_size}_ep{num_epochs}_lr{learning_rate}_mg{margin}.pt"
+    ckpt_path = f"./checkpoints/{ckpt_filename}"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    best_ckpt_path = args.best_ckpt or ckpt_path
     # -------------- Dataset + Dataloader -------------
-    train_dataset = SiameseDataset(train_data_path)
-    val_dataset = SiameseDataset(val_data_path)
+    train_dataset = SiameseDataset(train_data_path, root_dir="..")
+    val_dataset = SiameseDataset(val_data_path, root_dir="..")
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size)
 
     # ------------ Model, Loss, Optimizer --------------
     model = SiameseNetwork().to(device)
 
-    if resume and os.path.exists(ckpt_path):
-        print(f" Resuming training from checkpoint: {ckpt_path}")
-        model.load_state_dict(torch.load(ckpt_path))
+    if finetune and os.path.exists(best_ckpt_path): 
+        print(f" Resuming training from checkpoint: {best_ckpt_path}")
+        model.load_state_dict(torch.load(best_ckpt_path, map_location=device))
 
     loss_fn = ContrastiveLoss(margin=margin)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) 
@@ -112,7 +137,7 @@ def main():
             print("Early stopping triggered.")
             break
 
-    plot_loss(train_losses, val_losses, save_path="./project3_fingerprint_fvc2000/outputs/loss_curve.png")
+    plot_loss(train_losses, val_losses, save_path="./outputs/loss_curve.png")
 
 if __name__ == "__main__":
     main()

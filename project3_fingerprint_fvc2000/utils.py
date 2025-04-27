@@ -10,12 +10,12 @@ import torch.nn.functional as F
 from tqdm import tqdm
 from sklearn.metrics import precision_score, recall_score, f1_score
 
-
 class SiameseDataset(Dataset):
-    def __init__(self, npz_file):
-        data = np.load(npz_file, allow_pickle=True)
+    def __init__(self, pairs_file, root_dir=""):
+        data = np.load(pairs_file, allow_pickle=True)
         self.pairs = data["pairs"]
         self.labels = data["labels"]
+        self.root_dir = root_dir
 
     def __len__(self):
         return len(self.pairs)
@@ -25,12 +25,14 @@ class SiameseDataset(Dataset):
         label = self.labels[idx]
 
         if isinstance(img1_path, str):
-            img1 = np.load(img1_path)
+            img1_full_path = os.path.join(self.root_dir, img1_path)
+            img1 = np.load(img1_full_path)
         else:
-            img1 = img1_path  #  array
+            img1 = img1_path  
 
         if isinstance(img2_path, str):
-            img2 = np.load(img2_path)
+            img2_full_path = os.path.join(self.root_dir, img2_path)
+            img2 = np.load(img2_full_path)
         else:
             img2 = img2_path
 
@@ -272,7 +274,7 @@ def plot_metrics_vs_threshold(model, dataloader, device="cpu", save_path=None):
     else:
         plt.show()
 
-    with open("./project3_fingerprint_fvc2000/outputs/best_threshold.txt", "w") as f:
+    with open("./outputs/best_threshold.txt", "w") as f:
         f.write(f"{best_threshold:.6f}")
     print("Best threshold saved to outputs/best_threshold.txt")
 
