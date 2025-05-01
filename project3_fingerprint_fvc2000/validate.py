@@ -5,12 +5,14 @@ from utils import SiameseDataset, print_classification_report
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from utils import plot_distance_distribution, plot_roc_curve, plot_accuracy_vs_threshold
+from utils import plot_distance_distribution, plot_roc_curve, plot_metrics_vs_threshold
 import os
+import argparse
 
 
 
 def evaluate_accuracy(model, dataloader, threshold=0.5, device="cpu"):
+    print(f"\n Threshold used: {threshold}")
     model.eval()
     correct = 0
     total = 0
@@ -39,24 +41,43 @@ def evaluate_accuracy(model, dataloader, threshold=0.5, device="cpu"):
     return accuracy
 
 def main():
-    os.makedirs("./project3_fingerprint_fvc2000/outputs", exist_ok=True)
-    val_data_path = "./project3_fingerprint_fvc2000/data/val_pairs.npz"
-    ckpt_path = "./project3_fingerprint_fvc2000/checkpoints/best_model.pt"
-    batch_size = 4
-    threshold = 0.04
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--val_data", required=True, help="Path to validation pairs npz file")
+    parser.add_argument("--ckpt", required=True, help="Path to checkpoint file", default="./checkpoints/model_augTrue_blTrue_bs8_ep20_lr0.001_mg2.0.pt")
+    parser.add_argument("--threshold", type=float, default=1.010204, help="Threshold for distance")
+    args = parser.parse_args()
+
+    os.makedirs("./outputs", exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    batch_size = 8
+
+    # Load the best threshold from file if it exists
+    # threshold_file = "./project3_fingerprint_fvc2000/outputs/best_threshold.txt"
+    # if os.path.exists(threshold_file):
+    #     with open(threshold_file, "r") as f:
+    #         threshold = float(f.read().strip())
+    #     print(f"Loaded best threshold: {threshold}")
+    # else:
+    #     threshold = 0.05  # fallback 
+    #     print(f"No threshold file found, using default threshold = {threshold}")
+
+    # IMPORTANT: Change the model path to your trained model
+    ckpt_path = args.ckpt
 
     model = SiameseNetwork().to(device)
     model.load_state_dict(torch.load(ckpt_path, map_location=device))
     print(f"Loaded model from {ckpt_path}")
 
-    val_dataset = SiameseDataset(val_data_path)
+    val_dataset = SiameseDataset(args.val_data, root_dir=".")
     val_loader = DataLoader(val_dataset, batch_size=batch_size)
 
-    evaluate_accuracy(model, val_loader, threshold, device)
-    plot_distance_distribution(model, val_loader, device, save_path="./project3_fingerprint_fvc2000/outputs/distance_hist.png")
-    plot_roc_curve(model, val_loader, device, save_path="./project3_fingerprint_fvc2000/outputs/roc_curve.png")
-    #plot_accuracy_vs_threshold(model, val_loader, device,save_path="./project3_fingerprint_fvc2000/outputs/accuracy_vs_threshold.png")
+    evaluate_accuracy(model, val_loader, threshold=args.threshold, device=device)
+
+    plot_distance_distribution(model, val_loader, device, save_path="./outputs/distance_hist.png")
+    plot_roc_curve(model, val_loader, device, save_path="./outputs/roc_curve.png")
+    plot_metrics_vs_threshold(model, val_loader, device, save_path="./outputs/metrics_vs_threshold.png")
 
 if __name__ == "__main__":
     main()
+

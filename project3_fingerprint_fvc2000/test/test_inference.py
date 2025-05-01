@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import os
-from preprocess import normalize  
+from project3_fingerprint_fvc2000.preprocess_old import normalize  
 from siamese_model import SiameseNetwork
 
 def preprocess_image(image_path):

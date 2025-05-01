@@ -8,12 +8,14 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 import torch.nn.functional as F
 from tqdm import tqdm
+from sklearn.metrics import precision_score, recall_score, f1_score
 
 class SiameseDataset(Dataset):
-    def __init__(self, npz_file):
-        data = np.load(npz_file, allow_pickle=True)
+    def __init__(self, pairs_file, root_dir=""):
+        data = np.load(pairs_file, allow_pickle=True)
         self.pairs = data["pairs"]
         self.labels = data["labels"]
+        self.root_dir = root_dir
 
     def __len__(self):
         return len(self.pairs)
@@ -22,28 +24,39 @@ class SiameseDataset(Dataset):
         img1_path, img2_path = self.pairs[idx]
         label = self.labels[idx]
 
-        img1 = np.load(img1_path)
-        img2 = np.load(img2_path)
+        if isinstance(img1_path, str):
+            img1_full_path = os.path.join(self.root_dir, img1_path)
+            img1 = np.load(img1_full_path)
+        else:
+            img1 = img1_path  
 
-        img1_tensor = torch.tensor(img1).unsqueeze(0).float()  # [1, 300, 300]
-        img2_tensor = torch.tensor(img2).unsqueeze(0).float()
-        label_tensor = torch.tensor(label).float()
+        if isinstance(img2_path, str):
+            img2_full_path = os.path.join(self.root_dir, img2_path)
+            img2 = np.load(img2_full_path)
+        else:
+            img2 = img2_path
 
-        return img1_tensor, img2_tensor, label_tensor
+        img1 = torch.tensor(img1).unsqueeze(0)  # [1, H, W]
+        img2 = torch.tensor(img2).unsqueeze(0)
+        label = torch.tensor(label).float()
+
+        return img1, img2, label
 
 
 class ContrastiveLoss(nn.Module):
-    def __init__(self, margin=1.0):
-        super(ContrastiveLoss, self).__init__()
+    def __init__(self, margin=2.0):          
+        super().__init__()
         self.margin = margin
 
-    def forward(self, output1, output2, label):
-        distances = torch.nn.functional.pairwise_distance(output1, output2)
-        loss = torch.mean(
-            (1 - label) * torch.pow(distances, 2) +
-            label * torch.pow(torch.clamp(self.margin - distances, min=0.0), 2)
-        )
-        return loss
+    def forward(self, out1, out2, label):
+        # Euclidean distance between embeddings
+        d = torch.nn.functional.pairwise_distance(out1, out2)
+        # label = 1 → same finger  → target distance = 0
+        # label = 0 → different    → target distance ≥ margin
+        loss = label * d.pow(2) + (1 - label) * torch.clamp(self.margin - d, min=0.0).pow(2)
+        return loss.mean()                  # ← 缩进对齐
+
+
 
 
 def plot_loss(train_losses, val_losses, save_path=None):
@@ -103,8 +116,6 @@ def plot_distance_distribution(model, dataloader, device="cpu", save_path=None):
         plt.show()
 
 
-
-
 def plot_roc_curve(model, dataloader, device="cpu", save_path=None):
     import torch.nn.functional as F
     model.eval()
@@ -140,11 +151,6 @@ def plot_roc_curve(model, dataloader, device="cpu", save_path=None):
     else:
         plt.show()
 
-import matplotlib.pyplot as plt
-import torch
-import torch.nn.functional as F
-import numpy as np
-from tqdm import tqdm
 
 def print_classification_report(tp, tn, fp, fn):
     total = tp + tn + fp + fn
@@ -160,16 +166,66 @@ def print_classification_report(tp, tn, fp, fn):
     print(f"   F1 Score  : {f1:.4f}")
     print(f"  TP={tp} | TN={tn} | FP={fp} | FN={fn}")
 
+# def plot_accuracy_vs_threshold(model, dataloader, device="cpu", save_path=None):
+#     model.eval()
+#     thresholds = np.linspace(0.01, 0.15, 10)  
+#     accuracies = []
 
-def plot_accuracy_vs_threshold(model, dataloader, device="cpu", save_path=None):
+#     all_distances = []
+#     all_labels = []
+
+#     print(" Extracting embeddings...")
+#     with torch.no_grad():
+#         for img1, img2, label in tqdm(dataloader, desc="Forward pass"):
+#             img1, img2 = img1.to(device), img2.to(device)
+#             out1, out2 = model(img1, img2)
+#             dist = F.pairwise_distance(out1, out2)
+#             all_distances.extend(dist.cpu().numpy())
+#             all_labels.extend(label.cpu().numpy())
+
+#     all_distances = np.array(all_distances)
+#     all_labels = np.array(all_labels)
+
+#     print("Calculating accuracy for thresholds...")
+#     for t in tqdm(thresholds, desc="Threshold"):
+#         predictions = (all_distances < t).astype(np.float32)
+#         correct = (predictions == all_labels).sum()
+#         acc = correct / len(all_labels)
+#         accuracies.append(acc)
+
+#     best_idx = np.argmax(accuracies)
+#     best_threshold = thresholds[best_idx]
+#     best_acc = accuracies[best_idx]
+#     print(f"\n Best threshold = {best_threshold:.3f} → Accuracy = {best_acc*100:.2f}%")
+
+#     plt.figure(figsize=(7, 5))
+#     plt.plot(thresholds, accuracies, marker='o')
+#     plt.xlabel("Threshold")
+#     plt.ylabel("Accuracy")
+#     plt.title("Accuracy vs Threshold")
+#     plt.grid(True)
+
+#     if save_path:
+#         os.makedirs(os.path.dirname(save_path), exist_ok=True)
+#         plt.savefig(save_path)
+#         print(f"Accuracy vs Threshold plot saved to {save_path}")
+#     else:
+#         plt.show()
+
+#     # Save the best threshold to a text file
+#     threshold_txt_path = os.path.join(os.path.dirname(save_path), "best_threshold.txt")
+#     with open(threshold_txt_path, "w") as f:
+#         f.write(f"{best_threshold:.6f}")
+#     print(f"Best threshold saved to {threshold_txt_path}")
+
+
+def plot_metrics_vs_threshold(model, dataloader, device="cpu", save_path=None):
     model.eval()
-    thresholds = np.linspace(0.01, 0.15, 10)  
-    accuracies = []
-
+    thresholds = np.linspace(0.7, 1.1, 50)
     all_distances = []
     all_labels = []
 
-    print(" Extracting embeddings...")
+    print("Extracting embeddings...")
     with torch.no_grad():
         for img1, img2, label in tqdm(dataloader, desc="Forward pass"):
             img1, img2 = img1.to(device), img2.to(device)
@@ -181,27 +237,45 @@ def plot_accuracy_vs_threshold(model, dataloader, device="cpu", save_path=None):
     all_distances = np.array(all_distances)
     all_labels = np.array(all_labels)
 
-    print("Calculating accuracy for thresholds...")
+    accuracies = []
+    precisions = []
+    recalls = []
+    f1s = []
+
+    print("Calculating metrics for thresholds...")
     for t in tqdm(thresholds, desc="Threshold"):
-        predictions = (all_distances < t).astype(np.float32)
-        correct = (predictions == all_labels).sum()
-        acc = correct / len(all_labels)
-        accuracies.append(acc)
+        preds = (all_distances < t).astype(int)
+        accuracies.append((preds == all_labels).mean())
+        precisions.append(precision_score(all_labels, preds, zero_division=0))
+        recalls.append(recall_score(all_labels, preds, zero_division=0))
+        f1s.append(f1_score(all_labels, preds, zero_division=0))
 
-    best_idx = np.argmax(accuracies)
+    best_idx = np.argmax(f1s)
     best_threshold = thresholds[best_idx]
-    best_acc = accuracies[best_idx]
-    print(f"\n Best threshold = {best_threshold:.3f} → Accuracy = {best_acc*100:.2f}%")
+    best_f1 = f1s[best_idx]
+    print(f"\n Best threshold = {best_threshold:.6f} → F1 Score = {best_f1:.6f}")
 
-    plt.figure(figsize=(7, 5))
-    plt.plot(thresholds, accuracies, marker='o')
+    # Plot all metrics
+    plt.figure(figsize=(10, 6))
+    plt.plot(thresholds, accuracies, label="Accuracy")
+    plt.plot(thresholds, precisions, label="Precision")
+    plt.plot(thresholds, recalls, label="Recall")
+    plt.plot(thresholds, f1s, label="F1 Score")
     plt.xlabel("Threshold")
-    plt.ylabel("Accuracy")
-    plt.title("Accuracy vs Threshold")
+    plt.ylabel("Metric Value")
+    plt.title("Metrics vs Threshold")
+    plt.legend()
     plt.grid(True)
 
     if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
         plt.savefig(save_path)
-        print(f"Accuracy vs Threshold plot saved to {save_path}")
+        print(f"Metrics plot saved to {save_path}")
     else:
         plt.show()
+
+    with open("./outputs/best_threshold.txt", "w") as f:
+        f.write(f"{best_threshold:.6f}")
+    print("Best threshold saved to outputs/best_threshold.txt")
+
+    return best_threshold

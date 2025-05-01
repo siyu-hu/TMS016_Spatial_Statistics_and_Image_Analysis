@@ -3,3 +3,7 @@
 *.pdf
 __pycache__
 *.pt
+*.npz
+*.npy
+preprocess_old.py
+*.png
