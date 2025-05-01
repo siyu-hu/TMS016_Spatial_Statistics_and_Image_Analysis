@@ -44,7 +44,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--val_data", required=True, help="Path to validation pairs npz file")
     parser.add_argument("--ckpt", required=True, help="Path to checkpoint file", default="./checkpoints/model_augTrue_blTrue_bs8_ep20_lr0.001_mg2.0.pt")
-    parser.add_argument("--threshold", type=float, default=0.814286, help="Threshold for distance")
+    parser.add_argument("--threshold", type=float, default=1.010204, help="Threshold for distance")
     args = parser.parse_args()
 
     os.makedirs("./outputs", exist_ok=True)
@@ -69,7 +69,7 @@ def main():
     model.load_state_dict(torch.load(ckpt_path, map_location=device))
     print(f"Loaded model from {ckpt_path}")
 
-    val_dataset = SiameseDataset(args.val_data, root_dir="..")
+    val_dataset = SiameseDataset(args.val_data, root_dir=".")
     val_loader = DataLoader(val_dataset, batch_size=batch_size)
 
     evaluate_accuracy(model, val_loader, threshold=args.threshold, device=device)

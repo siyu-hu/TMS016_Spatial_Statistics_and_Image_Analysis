@@ -62,12 +62,12 @@ def main():
 
 
     if use_augmentation:
-        default_train_path = "./data/train_pairs_augmented.npz"
+        default_train_path = "./data/new_train_pairs_augmented.npz"
     else:
-        default_train_path = "./data/train_pairs.npz"
+        default_train_path = "./data/new_train_pairs.npz"
 
     train_data_path = args.train_pairs or default_train_path
-    val_data_path   = args.val_pairs or "./data/val_pairs.npz"
+    val_data_path   = args.val_pairs or "./data/new_val_pairs.npz"
 
 
     batch_size = 8
@@ -77,21 +77,21 @@ def main():
         default_lr     = 1e-4
         default_epoch  = 3
     else:                            
-        default_lr     = 1e-3
+        default_lr     = 5e-4
         default_epoch  = 20
 
     learning_rate = args.lr if args.lr is not None else default_lr
     num_epochs    = args.num_epochs if args.num_epochs is not None else default_epoch
 
     # output ckpt 
-    ckpt_filename = f"model_ft{finetune}_aug{use_augmentation}_bl{balance_negatives}_bs{batch_size}_ep{num_epochs}_lr{learning_rate}_mg{margin}.pt"
+    ckpt_filename = f"new_model_ft{finetune}_aug{use_augmentation}_bl{balance_negatives}_bs{batch_size}_ep{num_epochs}_lr{learning_rate}_mg{margin}.pt"
     ckpt_path = f"./checkpoints/{ckpt_filename}"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     best_ckpt_path = args.best_ckpt or ckpt_path
     # -------------- Dataset + Dataloader -------------
-    train_dataset = SiameseDataset(train_data_path, root_dir="..")
-    val_dataset = SiameseDataset(val_data_path, root_dir="..")
+    train_dataset = SiameseDataset(train_data_path, root_dir=".")
+    val_dataset = SiameseDataset(val_data_path, root_dir=".")
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size)
 
@@ -99,14 +99,17 @@ def main():
     model = SiameseNetwork().to(device)
 
     if finetune and os.path.exists(best_ckpt_path): 
-        print(f" Resuming training from checkpoint: {best_ckpt_path}")
+        print(f" Continue training from checkpoint: {best_ckpt_path}")
         model.load_state_dict(torch.load(best_ckpt_path, map_location=device))
+        print("[INFO] Fine-tuning mode: freezing convolutional backbone...")
+        for param in model.features.parameters():
+            param.requires_grad = False # freeze conv layers, only train the fc layer
 
     loss_fn = ContrastiveLoss(margin=margin)
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) 
-    #optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-4)
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=learning_rate) 
+
     scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=0.1, patience=2, verbose=True)
-    early_stop_patience = 4      # if validation loss does not improve for this many epochs, stop training
+    early_stop_patience = 7      # if validation loss does not improve for this many epochs, stop training
     bad_epochs = 0
 
     # ------ Training Loop -----------------

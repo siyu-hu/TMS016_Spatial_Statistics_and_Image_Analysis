@@ -50,6 +50,8 @@ def create_pairs(finger_dict, selected_fingers, augment_positive=False, num_augm
 
         # postive pairs (same finger)
         for img1, img2 in combinations(images, 2):
+            img1 = os.path.relpath(img1, start=".")  
+            img2 = os.path.relpath(img2, start=".")
             pairs.append([img1, img2])
             labels.append(1) # label = 1 ->> positive pair (same finger)
 
@@ -77,6 +79,8 @@ def create_pairs(finger_dict, selected_fingers, augment_positive=False, num_augm
             imgs2 = finger_dict[all_fingers[j]]
             for img1 in imgs1:
                 for img2 in imgs2:
+                    img1 = os.path.relpath(img1, start=".")  
+                    img2 = os.path.relpath(img2, start=".")
                     negative_pairs.append(([img1, img2], 0))
 
     if balance_negatives:

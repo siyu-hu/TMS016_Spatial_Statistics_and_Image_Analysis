@@ -47,8 +47,8 @@ def batch_preprocess_images(input_folder, output_folder, size=(300, 300)):
 
 def main():
 
-    input_folder = "./project3_fingerprint_fvc2000/data/original/DB1_B"
-    output_folder = "./project3_fingerprint_fvc2000/data/processed/DB1_B"
+    input_folder = "./data/original/DB1_B_new"
+    output_folder = "./data/processed/DB1_B_new"
 
     batch_preprocess_images(input_folder, output_folder)
     finger_dict = load_images_by_finger(output_folder)
@@ -59,7 +59,7 @@ def main():
 
     # IMPORTANT
     use_augmentation = True # TRUE for data augmentation
-    num_augments = 4 # number of augmentations per positive pair
+    num_augments = 5 # number of augmentations per positive pair
     balance_negatives = True  # TRUE for balancing number ofnegative samples to match number of positive samples
     
     if use_augmentation:
@@ -67,13 +67,13 @@ def main():
                                                  augment_positive=use_augmentation, 
                                                  num_augments=num_augments, 
                                                  balance_negatives=balance_negatives)
-        save_pairs(train_pairs, train_labels, "./project3_fingerprint_fvc2000/data/train_pairs_augmented")
+        save_pairs(train_pairs, train_labels, "./data/new_train_pairs_augmented")
     else:
         train_pairs, train_labels = create_pairs(finger_dict, train_fingers, 
                                                  augment_positive=False, 
                                                  num_augments=0, 
                                                  balance_negatives=balance_negatives)
-        save_pairs(train_pairs, train_labels, "./project3_fingerprint_fvc2000/data/train_pairs")
+        save_pairs(train_pairs, train_labels, "./data/new_train_pairs")
     
     # ============================================
     num_pos = np.sum(np.array(train_labels) == 1)
@@ -90,7 +90,7 @@ def main():
                                          augment_positive=False, 
                                          num_augments=0, 
                                          balance_negatives=False)
-    save_pairs(val_pairs, val_labels, "./project3_fingerprint_fvc2000/data/val_pairs")
+    save_pairs(val_pairs, val_labels, "./data/new_val_pairs")
 
 
     # data = np.load("./project3_fingerprint_fvc2000/data/train_pairs.npz", allow_pickle=True)

@@ -90,8 +90,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--inference_data", type=str, required=True, help="Path to inference images folder")
     parser.add_argument("--ckpt", type=str, required=True, help="Path to model checkpoint")
-    parser.add_argument("--thresholds", nargs='+', type=float, required=True,
+    parser.add_argument("--thresholds", nargs='+', type=float,
                     help="List of thresholds to try, e.g., 0.83 0.85 0.87 0.90")
+    parser.add_argument("--auto_threshold", action="store_true",
+                    help="Use auto-calibrated threshold (20% data for calibration)")
     args = parser.parse_args()
 
     # ------------ paths ------------
@@ -111,38 +113,70 @@ def main():
                                  augment_positive=False, num_augments=0,
                                  balance_negatives=False)
     
-    # # ------------ 20 % calibrate(pos:neg ~= 1:1), 80 % infer ------------
-    # pos_idx = [i for i, l in enumerate(labels) if l == 1]
-    # neg_idx = [i for i, l in enumerate(labels) if l == 0]
-    # np.random.seed(42)
-    # np.random.shuffle(pos_idx);  np.random.shuffle(neg_idx)
+    
+    if args.auto_threshold:
+        
+        print("\n[INFO] Auto threshold mode enabled.")
+        pos_idx = [i for i, l in enumerate(labels) if l == 1]
+        neg_idx = [i for i, l in enumerate(labels) if l == 0]
+        np.random.seed(42)
+        np.random.shuffle(pos_idx);  np.random.shuffle(neg_idx)
+        # # ------------ version 1: 20 % calibrate(pos:neg ~= 1:1), 80 % infer ------------
+        # cap = int(0.2 * len(labels))                      
+        # n_pos_calib = min(len(pos_idx), cap // 2)         
+        # n_neg_calib = min(len(neg_idx), cap - n_pos_calib)  
+        # calib_idx   = pos_idx[:n_pos_calib] + neg_idx[:n_neg_calib]  
+        # np.random.shuffle(calib_idx)                     
 
-    # cap = int(0.2 * len(labels))                      
-    # n_pos_calib = min(len(pos_idx), cap // 2)         
-    # n_neg_calib = min(len(neg_idx), cap - n_pos_calib)  
-    # calib_idx   = pos_idx[:n_pos_calib] + neg_idx[:n_neg_calib]  
-    # np.random.shuffle(calib_idx)                     
+        # calib_pairs  = [pairs[i]  for i in calib_idx]
+        # calib_labels = [labels[i] for i in calib_idx]
 
-    # calib_pairs  = [pairs[i]  for i in calib_idx]
-    # calib_labels = [labels[i] for i in calib_idx]
+        # print(f"[Calib] Positive={sum(calib_labels)} | Negative={len(calib_labels)-sum(calib_labels)}")
+        # threshold, f1_calib = auto_calibrate_threshold(model, calib_pairs, calib_labels, device)
+        # print(f"Auto-calibrated threshold = {threshold:.4f}  (F1 on calib = {f1_calib:.4f})")
 
-    # print(f"[Calib] Positive={sum(calib_labels)} | Negative={len(calib_labels)-sum(calib_labels)}")
-    # threshold, f1_calib = auto_calibrate_threshold(model, calib_pairs, calib_labels, device)
-    # print(f"Auto-calibrated threshold = {threshold:.4f}  (F1 on calib = {f1_calib:.4f})")
+        # # ------------ version 2: 20 % calibrate (pos:neg ~= 1:10) 100% infer ------------
+        # === Keep the real distribution as original inference data ===
+        total_pairs = len(labels)
+        pos_ratio = len(pos_idx) / total_pairs
+        neg_ratio = len(neg_idx) / total_pairs
 
+        cap = int(0.15 * total_pairs)
+        n_pos_calib = int(cap * pos_ratio)
+        n_neg_calib = cap - n_pos_calib
 
-    # # ------------ final inference ------------
-    # n_pos = sum(labels)                  # label == 1
-    # n_neg = len(labels) - n_pos          # label == 0
-    # print(f"[All pairs] Positive={n_pos}  |  Negative={n_neg}  "
-    #     f"({n_pos/len(labels):.2%} positive)")
-    # inference_batch(model, pairs, labels,
-    #             threshold=threshold, device=device, desc="Infer-100%")
-    print(f"[Inference] Total pairs: {len(pairs)}")
+        n_pos_calib = min(n_pos_calib, len(pos_idx))
+        n_neg_calib = min(n_neg_calib, len(neg_idx))
 
-    for t in args.thresholds:
-        print(f"\n=== threshold {t} ===")
-        inference_batch(model, pairs, labels, t, device, desc=f"@{t}")
+        calib_idx = pos_idx[:n_pos_calib] + neg_idx[:n_neg_calib]
+        np.random.shuffle(calib_idx)
+
+        calib_pairs  = [pairs[i]  for i in calib_idx]
+        calib_labels = [labels[i] for i in calib_idx]
+
+        print(f"[Calib] Positive={sum(calib_labels)} | Negative={len(calib_labels)-sum(calib_labels)}")
+        threshold, f1_calib = auto_calibrate_threshold(model, calib_pairs, calib_labels, device)
+        print(f"Auto-calibrated threshold = {threshold:.4f}  (F1 on calib = {f1_calib:.4f})")
+
+        
+        # ------------ final inference ------------
+        n_pos = sum(labels)                  # label == 1
+        n_neg = len(labels) - n_pos          # label == 0
+        print(f"[All pairs] Positive={n_pos}  |  Negative={n_neg}  "
+            f"({n_pos/len(labels):.2%} positive)")
+        inference_batch(model, pairs, labels,
+                    threshold=threshold, device=device, desc="Infer-100%")
+        print(f"[Inference] Total pairs: {len(pairs)}")
+    
+    elif args.thresholds:
+        print("\n[INFO] Manual threshold mode enabled.")
+        for t in args.thresholds:
+            print(f"\n=== threshold {t} ===")
+            inference_batch(model, pairs, labels, t, device, desc=f"@{t}")
+
+    else:
+        print("ERROR: You must either use --auto_threshold or provide --thresholds values.")
+
     
 if __name__ == "__main__":
     main()
