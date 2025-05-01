@@ -75,7 +75,7 @@ def main():
 
     if args.finetune:                
         default_lr     = 1e-4
-        default_epoch  = 3
+        default_epoch  = 10
     else:                            
         default_lr     = 5e-4
         default_epoch  = 20
