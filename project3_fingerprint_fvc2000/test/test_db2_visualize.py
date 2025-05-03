@@ -8,7 +8,7 @@ import os, torch, numpy as np
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
 from tqdm import tqdm
-from preprocess import normalize                      
+from project3_fingerprint_fvc2000.preprocess_old import normalize                      
 from create_train_pairs import load_images_by_finger_tif, create_pairs
 from siamese_model import SiameseNetwork
 import matplotlib.pyplot as plt
