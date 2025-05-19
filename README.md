@@ -23,10 +23,10 @@ A minimal solution completed in a short time for **fingerprint-matching** on the
 
 ### Methods and Results
 
-methods
-
-...
-
+![](./project3_fingerprint_fvc2000/model_structure.png)
+![](./project3_fingerprint_fvc2000/data_preprocessing.png)
+![](./project3_fingerprint_fvc2000/results.png)
+![](./project3_fingerprint_fvc2000/results1.png)
 
 Classification Report:
   Accuracy  : 97.50%
