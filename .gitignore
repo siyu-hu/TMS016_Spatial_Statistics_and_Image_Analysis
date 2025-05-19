@@ -6,4 +6,4 @@ __pycache__
 *.npz
 *.npy
 preprocess_old.py
-*.png
+output/
